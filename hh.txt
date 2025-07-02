@@ -1,0 +1,62 @@
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
+from semantic_kernel_setup import setup_kernel
+import os
+from datetime import datetime
+
+app = FastAPI(title="LLM Evaluation API", description="Upload 3 files for evaluation", version="1.1")
+
+# Read file content as text
+def read_raw_file(file: UploadFile) -> str:
+    content_bytes = file.file.read()
+    try:
+        return content_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        return content_bytes.decode('latin1')
+
+# Load the text template
+def load_prompt_template() -> str:
+    with open("prompt_template.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
+# Save response to markdown file
+def save_markdown(content: str) -> str:
+    os.makedirs("output", exist_ok=True)
+    filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    filepath = os.path.join("output", filename)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    return filepath
+
+@app.post("/evaluate/")
+async def evaluate(
+    input_file: UploadFile = File(..., description="Input document"),
+    expected_file: UploadFile = File(..., description="Expected output document"),
+    llm_response_file: UploadFile = File(..., description="LLM-generated response document"),
+):
+    # Read file contents
+    input_content = read_raw_file(input_file)
+    expected_content = read_raw_file(expected_file)
+    llm_content = read_raw_file(llm_response_file)
+
+    # Load and fill prompt template
+    template = load_prompt_template()
+    final_prompt = (
+        template.replace("{{input_file}}", input_content)
+                .replace("{{expected_file}}", expected_content)
+                .replace("{{llm_response_file}}", llm_content)
+    )
+
+    # Call Semantic Kernel
+    kernel = setup_kernel()
+    result = await kernel.run_async(final_prompt)
+    markdown_output = f"# Evaluation Result\n\n{str(result)}"
+
+    # Save to markdown file
+    saved_path = save_markdown(markdown_output)
+
+    return JSONResponse(content={
+        "message": "Evaluation completed.",
+        "markdown_file": saved_path,
+        "markdown_preview": markdown_output[:1000]  # Optional: limit preview length
+    })
