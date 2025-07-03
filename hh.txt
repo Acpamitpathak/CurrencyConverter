@@ -1,70 +1,22 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-from semantic_kernel_setup import setup_kernel
-from datetime import datetime
+from semantic_kernel import Kernel
+from semantic_kernel.connectors.ai.open_ai import OpenAIChatService
 import os
 
-app = FastAPI(title="LLM Evaluation API", description="Upload 3 files for evaluation", version="1.1")
+def setup_kernel():
+    # Initialize the kernel
+    kernel = Kernel()
 
-class EvaluationService:
-    def __init__(self):
-        self.output_dir = "output"
-        self.template_path = "prompt_template.txt"
-        self.kernel = setup_kernel()
-        os.makedirs(self.output_dir, exist_ok=True)
+    # Set your OpenAI model and key
+    model_id = "gpt-4o"  # or "gpt-4", "gpt-3.5-turbo"
+    api_key = os.getenv("OPENAI_API_KEY", "your-openai-api-key")
 
-    def read_raw_file(self, file: UploadFile) -> str:
-        content_bytes = file.file.read()
-        try:
-            return content_bytes.decode('utf-8')
-        except UnicodeDecodeError:
-            return content_bytes.decode('latin1')
+    # Register the OpenAI chat service
+    kernel.add_chat_service(
+        service_id="chat-gpt",
+        service=OpenAIChatService(model_id=model_id, api_key=api_key)
+    )
 
-    def load_prompt_template(self) -> str:
-        with open(self.template_path, "r", encoding="utf-8") as f:
-            return f.read()
+    # Set default chat service
+    kernel.set_default_chat_service("chat-gpt")
 
-    def fill_prompt_template(self, template: str, input_text: str, expected_text: str, llm_text: str) -> str:
-        return (
-            template.replace("{{input_file}}", input_text)
-                    .replace("{{expected_file}}", expected_text)
-                    .replace("{{llm_response_file}}", llm_text)
-        )
-
-    def save_markdown(self, content: str) -> str:
-        filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-        filepath = os.path.join(self.output_dir, filename)
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-        return filepath
-
-    async def evaluate_files(self, input_file: UploadFile, expected_file: UploadFile, llm_file: UploadFile):
-        input_text = self.read_raw_file(input_file)
-        expected_text = self.read_raw_file(expected_file)
-        llm_text = self.read_raw_file(llm_file)
-
-        template = self.load_prompt_template()
-        final_prompt = self.fill_prompt_template(template, input_text, expected_text, llm_text)
-
-        result = await self.kernel.run_async(final_prompt)
-        markdown_result = f"# Evaluation Result\n\n{str(result)}"
-        saved_file = self.save_markdown(markdown_result)
-
-        return {
-            "message": "Evaluation completed.",
-            "markdown_file": saved_file,
-            "markdown_preview": markdown_result[:1000]
-        }
-
-
-# Instantiate once (singleton)
-evaluator = EvaluationService()
-
-@app.post("/evaluate/")
-async def evaluate(
-    input_file: UploadFile = File(..., description="Input document"),
-    expected_file: UploadFile = File(..., description="Expected output document"),
-    llm_response_file: UploadFile = File(..., description="LLM-generated response document"),
-):
-    result = await evaluator.evaluate_files(input_file, expected_file, llm_response_file)
-    return JSONResponse(content=result)
+    return kernel
