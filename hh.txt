@@ -1,29 +1,58 @@
-import os
-from dotenv import load_dotenv
-from semantic_kernel import Kernel
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+from fastapi import UploadFile
+from typing import Optional
 
-load_dotenv()
+class EvaluationService:
+    def __init__(self, cfg=None):
+        self.cfg = cfg
+        self.input_text: Optional[str] = None
+        self.expected_text: Optional[str] = None
+        self.llm_response_text: Optional[str] = None
 
-def setup_kernel():
-    kernel = Kernel()
+    async def evaluate(self, input_file: UploadFile, expected_file: UploadFile, llm_response_file: UploadFile) -> str:
+        await self._set_input_file(input_file)
+        await self._set_expected_file(expected_file)
+        await self._set_llm_response_file(llm_response_file)
 
-    azure_chat = AzureChatCompletion(
-        deployment_name=os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
-        endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-        service_id="azure-gpt",
-        max_tokens=2048,
-        temperature=0.3,
-        top_p=0.9
-    )
+        # You now have input_text, expected_text, llm_response_text
+        # Use them to fill template, call SK, etc.
+        filled_prompt = self.fill_template_placeholders(
+            self.load_template(),
+            self.input_text,
+            self.expected_text,
+            self.llm_response_text
+        )
 
-    kernel.add_service(azure_chat)
-    kernel.set_default_chat_service("azure-gpt")
-    return kernel
+        # Simulate SK response (you can replace this with real SK call)
+        return {
+            "input": self.input_text[:100],
+            "expected": self.expected_text[:100],
+            "llm_response": self.llm_response_text[:100],
+            "prompt": filled_prompt[:300]  # Preview
+        }
 
+    async def _set_input_file(self, file: UploadFile):
+        self.input_text = await self._read_file(file)
 
-# After assembling final_prompt...
-chat = self.kernel.get_service(type=type(azure_chat))
-result = await chat.complete_chat(prompt=final_prompt)
+    async def _set_expected_file(self, file: UploadFile):
+        self.expected_text = await self._read_file(file)
+
+    async def _set_llm_response_file(self, file: UploadFile):
+        self.llm_response_text = await self._read_file(file)
+
+    async def _read_file(self, file: UploadFile) -> str:
+        content = await file.read()
+        try:
+            return content.decode("utf-8")
+        except UnicodeDecodeError:
+            return content.decode("latin1")
+
+    def load_template(self, filename: str = "prompt_template.txt") -> str:
+        import os
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(base_dir, filename), "r", encoding="utf-8") as file:
+            return file.read()
+
+    def fill_template_placeholders(self, template: str, input_text: str, expected_text: str, response_text: str) -> str:
+        return (template.replace("{{input}}", input_text)
+                        .replace("{{expected}}", expected_text)
+                        .replace("{{response}}", response_text))
