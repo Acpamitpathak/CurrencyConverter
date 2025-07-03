@@ -1,58 +1,32 @@
-from fastapi import UploadFile
-from typing import Optional
+import os
+import json
+from datetime import datetime
 
-class EvaluationService:
-    def __init__(self, cfg=None):
-        self.cfg = cfg
-        self.input_text: Optional[str] = None
-        self.expected_text: Optional[str] = None
-        self.llm_response_text: Optional[str] = None
+# Save response as markdown file
+def save_json_as_markdown(data: dict, output_dir: str = "output") -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    filepath = os.path.join(output_dir, filename)
 
-    async def evaluate(self, input_file: UploadFile, expected_file: UploadFile, llm_response_file: UploadFile) -> str:
-        await self._set_input_file(input_file)
-        await self._set_expected_file(expected_file)
-        await self._set_llm_response_file(llm_response_file)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("# ✅ LLM Evaluation Output\n\n")
+        f.write("```json\n")
+        f.write(json.dumps(data, indent=2))
+        f.write("\n```")
 
-        # You now have input_text, expected_text, llm_response_text
-        # Use them to fill template, call SK, etc.
-        filled_prompt = self.fill_template_placeholders(
-            self.load_template(),
-            self.input_text,
-            self.expected_text,
-            self.llm_response_text
-        )
+    return filepath
 
-        # Simulate SK response (you can replace this with real SK call)
-        return {
-            "input": self.input_text[:100],
-            "expected": self.expected_text[:100],
-            "llm_response": self.llm_response_text[:100],
-            "prompt": filled_prompt[:300]  # Preview
-        }
 
-    async def _set_input_file(self, file: UploadFile):
-        self.input_text = await self._read_file(file)
+result = await asyncio.wait_for(
+    component.invoke_async(final_prompt),
+    timeout=240
+)
 
-    async def _set_expected_file(self, file: UploadFile):
-        self.expected_text = await self._read_file(file)
+response_data = result.json()
+markdown_path = save_json_as_markdown(response_data)
 
-    async def _set_llm_response_file(self, file: UploadFile):
-        self.llm_response_text = await self._read_file(file)
-
-    async def _read_file(self, file: UploadFile) -> str:
-        content = await file.read()
-        try:
-            return content.decode("utf-8")
-        except UnicodeDecodeError:
-            return content.decode("latin1")
-
-    def load_template(self, filename: str = "prompt_template.txt") -> str:
-        import os
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(base_dir, filename), "r", encoding="utf-8") as file:
-            return file.read()
-
-    def fill_template_placeholders(self, template: str, input_text: str, expected_text: str, response_text: str) -> str:
-        return (template.replace("{{input}}", input_text)
-                        .replace("{{expected}}", expected_text)
-                        .replace("{{response}}", response_text))
+return JSONResponse(content={
+    "message": "LLM response completed",
+    "markdown_file": markdown_path,
+    "preview": response_data
+})
