@@ -2,12 +2,17 @@ import os
 import json
 from datetime import datetime
 
-# Save response as markdown file
-def save_json_as_markdown(data: dict, output_dir: str = "output") -> str:
+def save_json_as_markdown(data: dict) -> str:
+    # Ensure output is relative to this file's location
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(base_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
+
+    # Generate unique filename
     filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     filepath = os.path.join(output_dir, filename)
 
+    # Save JSON as markdown content
     with open(filepath, "w", encoding="utf-8") as f:
         f.write("# ✅ LLM Evaluation Output\n\n")
         f.write("```json\n")
@@ -15,18 +20,3 @@ def save_json_as_markdown(data: dict, output_dir: str = "output") -> str:
         f.write("\n```")
 
     return filepath
-
-
-result = await asyncio.wait_for(
-    component.invoke_async(final_prompt),
-    timeout=240
-)
-
-response_data = result.json()
-markdown_path = save_json_as_markdown(response_data)
-
-return JSONResponse(content={
-    "message": "LLM response completed",
-    "markdown_file": markdown_path,
-    "preview": response_data
-})
