@@ -1,54 +1,40 @@
-import os
 import json
-from datetime import datetime
+import os
+from fastapi import UploadFile
 
-def save_json_as_markdown(self, data) -> str:
-    # ✅ Convert string to dict if needed
-    if isinstance(data, str):
-        data = json.loads(data)
+async def read_uploaded_file_as_text_by_extension(self, file: UploadFile) -> str:
+    """
+    Reads an uploaded file and returns its content based on file extension.
+    - For '.json' files: returns pretty-printed JSON.
+    - For '.txt', '.md', etc: returns plain text.
+    - If extension is misleading, still tries to handle gracefully.
+    """
+    try:
+        # Read file content
+        content = await file.read()
+        decoded = content.decode("utf-8").strip()
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(base_dir, "output")
-    os.makedirs(output_dir, exist_ok=True)
+        # Get file extension
+        filename = file.filename
+        ext = os.path.splitext(filename)[-1].lower()
 
-    filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-    filepath = os.path.join(output_dir, filename)
+        if ext == ".json":
+            try:
+                data = json.loads(decoded)
+                return json.dumps(data, indent=2, ensure_ascii=False)
+            except json.JSONDecodeError:
+                return f"⚠️ File has .json extension but content is not valid JSON.\n\n{decoded}"
 
-    def format_section(title, content, level=2):
-        """Format each section with title and content"""
-        lines = [f"{'#' * level} {title}"]
-        if isinstance(content, dict):
-            for k, v in content.items():
-                if isinstance(v, dict):
-                    lines.append(format_section(k, v, level + 1))
-                else:
-                    lines.append(f"- **{k}**: {v}")
-        elif isinstance(content, list):
-            for i, item in enumerate(content, start=1):
-                lines.append(f"**Item {i}:**")
-                lines.append(format_section("", item, level + 1))
+        elif ext in [".txt", ".md", ".log", ".cfg"]:
+            return decoded  # Plain text
+
         else:
-            lines.append(f"{content}")
-        return "\n".join(lines)
+            # Unknown extension – fallback: try JSON, else plain
+            try:
+                data = json.loads(decoded)
+                return json.dumps(data, indent=2, ensure_ascii=False)
+            except json.JSONDecodeError:
+                return decoded
 
-    # 🧾 Compose markdown
-    markdown_lines = [
-        "# 🧠 LLM Evaluation Output",
-        "",
-        "## 📝 Overview (Raw JSON)",  # Optional section
-        "```json",
-        json.dumps(data, indent=2),
-        "```",
-        "",
-        "## 📋 Structured Summary"
-    ]
-
-    # 🧱 Loop through top-level sections
-    for section_title, section_content in data.items():
-        markdown_lines.append(format_section(section_title.replace("_", " ").title(), section_content))
-
-    # 💾 Write to file
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n\n".join(markdown_lines))
-
-    return filepath
+    except Exception as e:
+        return f"❌ Error reading file: {str(e)}"
