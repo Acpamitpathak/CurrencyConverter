@@ -3,83 +3,37 @@ import json
 from datetime import datetime
 
 class MarkdownReportGenerator:
-    def __init__(self):
+    def generate_markdown_report(self, response_data: dict) -> str:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.output_dir = os.path.join(base_dir, "output")
-        os.makedirs(self.output_dir, exist_ok=True)
+        output_dir = os.path.join(base_dir, "output")
+        os.makedirs(output_dir, exist_ok=True)
 
-    def generate_markdown_report(self, data: dict) -> str:
-        """
-        Generates a markdown report from a dictionary (JSON-like) response.
-        Saves it to a .md file and returns the path.
-        """
-        if isinstance(data, str):
-            data = json.loads(data)
-
-        filename = f"llm_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-        filepath = os.path.join(self.output_dir, filename)
-
-        markdown_content = self._format_markdown(data)
+        filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        filepath = os.path.join(output_dir, filename)
 
         with open(filepath, "w", encoding="utf-8") as f:
-            f.write(markdown_content)
+            f.write("# 📝 LLM Evaluation Report\n\n")
+
+            # Evaluation Summary
+            summary = response_data.get("evaluation_summary", {})
+            f.write("## 📊 Evaluation Summary\n")
+            for key, value in summary.items():
+                f.write(f"- **{key.replace('_', ' ').title()}**: {value}\n")
+            f.write("\n")
+
+            # Section Analysis
+            sections = response_data.get("section_analysis", {})
+            f.write("## 🧩 Section Analysis\n")
+            for section, details in sections.items():
+                f.write(f"### 🔹 {section.replace('_', ' ').title()}\n")
+                for key, value in details.items():
+                    f.write(f"- **{key.capitalize()}**: {value}\n")
+                f.write("\n")
+
+            # Compliance
+            f.write("## ✅ Compliance Summary\n")
+            f.write(f"- **Compliance Status**: {summary.get('compliance_status')}\n")
+            f.write(f"- **Critical Findings**: {summary.get('critical_findings')}\n")
+            f.write(f"- **Overall Score**: {summary.get('overall_score')}\n")
 
         return filepath
-
-    def _format_markdown(self, data: dict) -> str:
-        def section(title):
-            return f"\n## {title}\n"
-
-        def subsection(title):
-            return f"\n### {title}\n"
-
-        def bullet(k, v):
-            return f"- **{k}**: {v}"
-
-        def format_dict(d, indent=0):
-            lines = []
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    lines.append(subsection("🧩 " + k.replace("_", " ").title()))
-                    lines.extend(format_dict(v, indent + 1))
-                elif isinstance(v, list):
-                    lines.append(subsection("📂 " + k.replace("_", " ").title()))
-                    for idx, item in enumerate(v, start=1):
-                        lines.append(f"- **Item {idx}**")
-                        if isinstance(item, dict):
-                            lines.extend(format_dict(item, indent + 1))
-                        else:
-                            lines.append(f"  - {item}")
-                else:
-                    lines.append(bullet(k.replace("_", " ").title(), v))
-            return lines
-
-        markdown = ["# 📘 LLM Evaluation Report"]
-
-        for key, value in data.items():
-            if isinstance(value, dict):
-                markdown.append(section("🗂️ " + key.replace("_", " ").title()))
-                markdown.extend(format_dict(value))
-            elif isinstance(value, list):
-                markdown.append(section("📚 " + key.replace("_", " ").title()))
-                for i, item in enumerate(value, start=1):
-                    markdown.append(f"### 📄 Item {i}")
-                    if isinstance(item, dict):
-                        markdown.extend(format_dict(item))
-                    else:
-                        markdown.append(f"- {item}")
-            else:
-                markdown.append(bullet(key.replace("_", " ").title(), value))
-
-            markdown.append("\n---")  # Separator
-
-        return "\n".join(markdown)
-
-
-
-from markdown_generator import MarkdownReportGenerator
-
-...
-
-# Inside your async method or logic:
-markdown_path = MarkdownReportGenerator().generate_markdown_report(response_data)
