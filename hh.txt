@@ -1,22 +1,27 @@
-import os
 import json
-from datetime import datetime
+from fastapi import UploadFile
 
-def save_json_as_markdown(data: dict) -> str:
-    # Ensure output is relative to this file's location
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(base_dir, "output")
-    os.makedirs(output_dir, exist_ok=True)
+async def read_uploaded_json_file_as_string(file: UploadFile) -> str:
+    """
+    Reads an uploaded JSON file and returns it as a formatted string.
+    """
+    try:
+        content = await file.read()
+        decoded = content.decode('utf-8')
+        data = json.loads(decoded)
+        json_string = json.dumps(data, indent=4, ensure_ascii=False)
+        return json_string
+    except json.JSONDecodeError:
+        return "Error: Invalid JSON format"
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
 
-    # Generate unique filename
-    filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-    filepath = os.path.join(output_dir, filename)
 
-    # Save JSON as markdown content
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("# ✅ LLM Evaluation Output\n\n")
-        f.write("```json\n")
-        f.write(json.dumps(data, indent=2))
-        f.write("\n```")
+@app.post("/upload-json/")
+async def upload_json(file: UploadFile = File(...)):
+    json_text = await read_uploaded_json_file_as_string(file)
 
-    return filepath
+    # You can return it or pass it to another function
+    some_other_function(json_text)
+
+    return {"raw_json_text": json_text}
