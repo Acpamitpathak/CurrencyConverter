@@ -1,0 +1,5 @@
+from advanced_file_content_extractor import AdvancedFileContentExtractor
+
+extractor = AdvancedFileContentExtractor()
+output = extractor.extract_text_from_file("/path/to/your/file.pdf")
+print(output)
