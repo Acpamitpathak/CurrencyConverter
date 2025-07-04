@@ -1,6 +1,11 @@
-def save_json_as_markdown(self, data: dict) -> str:
-    import os
-    from datetime import datetime
+import os
+import json
+from datetime import datetime
+
+def save_json_as_markdown(self, data) -> str:
+    # ✅ Convert string to dict if needed
+    if isinstance(data, str):
+        data = json.loads(data)
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(base_dir, "output")
@@ -9,37 +14,41 @@ def save_json_as_markdown(self, data: dict) -> str:
     filename = f"evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     filepath = os.path.join(output_dir, filename)
 
-    def format_dict(d, indent=0):
-        lines = []
-        for key, value in d.items():
-            prefix = "  " * indent + f"**{key}**: "
-            if isinstance(value, dict):
-                lines.append("  " * indent + f"### {key}")
-                lines.extend(format_dict(value, indent + 1))
-            elif isinstance(value, list):
-                lines.append(prefix)
-                for item in value:
-                    if isinstance(item, dict):
-                        lines.extend(format_dict(item, indent + 1))
-                    else:
-                        lines.append("  " * (indent + 1) + f"- {item}")
-            else:
-                lines.append(prefix + f"{value}")
-        return lines
+    def format_section(title, content, level=2):
+        """Format each section with title and content"""
+        lines = [f"{'#' * level} {title}"]
+        if isinstance(content, dict):
+            for k, v in content.items():
+                if isinstance(v, dict):
+                    lines.append(format_section(k, v, level + 1))
+                else:
+                    lines.append(f"- **{k}**: {v}")
+        elif isinstance(content, list):
+            for i, item in enumerate(content, start=1):
+                lines.append(f"**Item {i}:**")
+                lines.append(format_section("", item, level + 1))
+        else:
+            lines.append(f"{content}")
+        return "\n".join(lines)
 
+    # 🧾 Compose markdown
     markdown_lines = [
-        "# ✅ LLM Evaluation Output",
+        "# 🧠 LLM Evaluation Output",
         "",
+        "## 📝 Overview (Raw JSON)",  # Optional section
         "```json",
         json.dumps(data, indent=2),
         "```",
         "",
-        "## 📊 Structured Summary",
-        ""
+        "## 📋 Structured Summary"
     ]
-    markdown_lines += format_dict(data)
 
+    # 🧱 Loop through top-level sections
+    for section_title, section_content in data.items():
+        markdown_lines.append(format_section(section_title.replace("_", " ").title(), section_content))
+
+    # 💾 Write to file
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n".join(markdown_lines))
+        f.write("\n\n".join(markdown_lines))
 
     return filepath
