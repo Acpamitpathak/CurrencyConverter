@@ -1,73 +1,62 @@
-import json
 import os
-from datetime import datetime
+import json
+from typing import Union
+from PyPDF2 import PdfReader
+from docx import Document
 
-class MarkdownReportGenerator:
-    def __init__(self, output_dir="output"):
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
+class FileContentExtractor:
+    def extract_text_from_file(self, file_path: str) -> str:
+        """
+        Detects the file type and returns readable text content from:
+        .txt, .json, .pdf, or .docx
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
 
-    def generate_markdown_report(self, response_data):
-        # Handle string input (assume JSON string)
-        if isinstance(response_data, str):
-            try:
-                response_data = json.loads(response_data)
-            except json.JSONDecodeError:
-                raise ValueError("Provided response_data string is not valid JSON.")
+        ext = os.path.splitext(file_path)[1].lower()
 
-        # Ensure it's a dictionary after parsing
-        if not isinstance(response_data, dict):
-            raise TypeError("Expected dict or JSON string, but got something else.")
-
-        filename = f"llm_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-        filepath = os.path.join(self.output_dir, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(f"# 📝 LLM Evaluation Report\n\n")
-
-            # Evaluation Summary
-            summary = response_data.get("evaluation_summary", {})
-            if summary:
-                f.write(f"## 📌 Evaluation Summary\n\n")
-                for key, value in summary.items():
-                    f.write(f"- **{self._prettify(key)}:** {value}\n")
-                f.write("\n")
-
-            # Section Analysis
-            section_analysis = response_data.get("section_analysis", {})
-            if section_analysis:
-                f.write("## 📂 Section Analysis\n\n")
-                for section, content in section_analysis.items():
-                    f.write(f"### 🔹 {self._prettify(section)}\n")
-                    if isinstance(content, dict):
-                        for subkey, subvalue in content.items():
-                            f.write(f"- **{self._prettify(subkey)}:** {subvalue}\n")
-                    else:
-                        f.write(f"- {content}\n")
-                    f.write("\n")
-
-            # Remaining top-level keys
-            for key, value in response_data.items():
-                if key in ["evaluation_summary", "section_analysis"]:
-                    continue
-                f.write(f"## 📦 {self._prettify(key)}\n\n")
-                self._write_value(f, value)
-                f.write("\n")
-
-        return filepath
-
-    def _write_value(self, f, value, indent=0):
-        prefix = "  " * indent
-        if isinstance(value, dict):
-            for key, val in value.items():
-                f.write(f"{prefix}- **{self._prettify(key)}:**\n")
-                self._write_value(f, val, indent + 1)
-        elif isinstance(value, list):
-            for item in value:
-                f.write(f"{prefix}- ")
-                self._write_value(f, item, indent + 1)
+        if ext == ".txt":
+            return self._read_text(file_path)
+        elif ext == ".json":
+            return self._read_json(file_path)
+        elif ext == ".pdf":
+            return self._read_pdf(file_path)
+        elif ext == ".docx":
+            return self._read_docx(file_path)
         else:
-            f.write(f"{prefix}- {value}\n")
+            raise ValueError(f"Unsupported file type: {ext}")
 
-    def _prettify(self, text):
-        return text.replace("_", " ").capitalize()
+    def _read_text(self, path: str) -> str:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    def _read_json(self, path: str) -> str:
+        with open(path, "r", encoding="utf-8") as f:
+            try:
+                data = json.load(f)
+                return json.dumps(data, indent=2)
+            except json.JSONDecodeError as e:
+                return f"Invalid JSON: {str(e)}"
+
+    def _read_pdf(self, path: str) -> str:
+        reader = PdfReader(path)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+        return text.strip()
+
+    def _read_docx(self, path: str) -> str:
+        doc = Document(path)
+        full_text = []
+        for para in doc.paragraphs:
+            full_text.append(para.text)
+        return "\n".join(full_text).strip()
+
+
+
+
+from file_content_extractor import FileContentExtractor
+
+extractor = FileContentExtractor()
+text = extractor.extract_text_from_file("/path/to/uploaded/file.pdf")
+print(text)
