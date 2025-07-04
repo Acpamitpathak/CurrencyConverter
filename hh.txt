@@ -1,40 +1,47 @@
-import json
-import os
+import fitz  # PyMuPDF
+import base64
 from fastapi import UploadFile
 
-async def read_uploaded_file_as_text_by_extension(self, file: UploadFile) -> str:
+async def extract_text_and_images_from_pdf(self, file: UploadFile) -> str:
     """
-    Reads an uploaded file and returns its content based on file extension.
-    - For '.json' files: returns pretty-printed JSON.
-    - For '.txt', '.md', etc: returns plain text.
-    - If extension is misleading, still tries to handle gracefully.
+    Extracts all text and embedded images from a PDF file.
+    Returns a single formatted string containing the text and base64-encoded images.
     """
     try:
-        # Read file content
+        # Read file into memory
         content = await file.read()
-        decoded = content.decode("utf-8").strip()
 
-        # Get file extension
-        filename = file.filename
-        ext = os.path.splitext(filename)[-1].lower()
+        # Load PDF from bytes
+        doc = fitz.open(stream=content, filetype="pdf")
 
-        if ext == ".json":
-            try:
-                data = json.loads(decoded)
-                return json.dumps(data, indent=2, ensure_ascii=False)
-            except json.JSONDecodeError:
-                return f"⚠️ File has .json extension but content is not valid JSON.\n\n{decoded}"
+        result = []
+        result.append("# 📄 Extracted Text:\n")
 
-        elif ext in [".txt", ".md", ".log", ".cfg"]:
-            return decoded  # Plain text
+        # Extract text from each page
+        for page_num, page in enumerate(doc, start=1):
+            text = page.get_text().strip()
+            if text:
+                result.append(f"## Page {page_num}\n{text}\n")
 
-        else:
-            # Unknown extension – fallback: try JSON, else plain
-            try:
-                data = json.loads(decoded)
-                return json.dumps(data, indent=2, ensure_ascii=False)
-            except json.JSONDecodeError:
-                return decoded
+        result.append("\n# 🖼️ Extracted Images:\n")
+
+        image_count = 0
+        for page_index in range(len(doc)):
+            images = doc.get_page_images(page_index)
+            for img_index, img in enumerate(images):
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image_format = base_image["ext"]
+                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                result.append(f"### Image {image_count+1} (format: {image_format})\n")
+                result.append(f"![Image {image_count+1}](data:image/{image_format};base64,{image_base64})\n")
+                image_count += 1
+
+        if image_count == 0:
+            result.append("No images found in PDF.")
+
+        return "\n".join(result)
 
     except Exception as e:
-        return f"❌ Error reading file: {str(e)}"
+        return f"❌ Error extracting PDF content: {str(e)}"
