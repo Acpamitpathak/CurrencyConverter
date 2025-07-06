@@ -1,25 +1,55 @@
 from pathlib import Path
 
-def save_markdown_response(response_text: str, output_path: str = "evaluation_output.md"):
-    # Clean and format your output
-    md_content = "# 📝 Evaluation Report\n\n"
+class MarkdownFormatter:
+    def __init__(self, raw_text: str):
+        self.raw_text = raw_text
 
-    # Use section headings and formatting
-    sections = response_text.split("\n\n")
-    for section in sections:
-        lines = section.strip().splitlines()
-        if lines:
-            heading = lines[0].strip()
-            md_content += f"## {heading}\n"
-            for line in lines[1:]:
-                key_value = line.split(":", 1)
-                if len(key_value) == 2:
-                    key, value = key_value
-                    md_content += f"- **{key.strip()}**: {value.strip()}\n"
-                else:
-                    md_content += f"{line}\n"
-            md_content += "\n"
+    def format_to_markdown(self) -> str:
+        md_content = "# 📝 Evaluation Report\n\n"
 
-    # Save to file
-    Path(output_path).write_text(md_content, encoding="utf-8")
-    print(f"Markdown saved to {output_path}")
+        # Split by double newlines to separate logical sections
+        sections = self.raw_text.split("\n\n")
+        for section in sections:
+            lines = section.strip().splitlines()
+            if lines:
+                heading = lines[0].strip()
+                md_content += f"## {heading}\n"
+                for line in lines[1:]:
+                    key_value = line.split(":", 1)
+                    if len(key_value) == 2:
+                        key, value = key_value
+                        md_content += f"- **{key.strip()}**: {value.strip()}\n"
+                    else:
+                        md_content += f"{line.strip()}\n"
+                md_content += "\n"
+        return md_content
+
+    def save_markdown(self, output_path: str = "evaluation_output.md"):
+        md_text = self.format_to_markdown()
+        Path(output_path).write_text(md_text, encoding="utf-8")
+        print(f"✅ Markdown saved to `{output_path}`")
+
+
+
+
+# Step 1: Assign your raw response
+raw_response = """
+Heading Section
+Detected LLM Key: review_summary_overview
+Status: Complete
+Score: 8/10
+Comment: The LLM output provides a summary with architecture name and review date, but lacks details.
+
+Executive Summary
+Status: Incomplete
+Score: 5/10
+Comment: The output is missing clear project context.
+"""
+
+# Step 2: Create class instance
+formatter = MarkdownFormatter(raw_text=raw_response)
+
+# Step 3: Save to Markdown file
+formatter.save_markdown("my_report.md")
+
+
