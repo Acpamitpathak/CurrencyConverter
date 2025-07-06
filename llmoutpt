@@ -1,38 +1,66 @@
 import json
 import os
 
-def generate_markdown_from_response(response_json: dict, output_file: str = "llm_evaluation.md") -> str:
-    """
-    Generate a beautiful markdown file from LLM evaluation response JSON.
-    
-    Parameters:
-        response_json (dict): The JSON object containing the evaluation.
-        output_file (str): Output markdown filename.
-    
-    Returns:
-        str: Path to the generated markdown file.
-    """
+class MarkdownReportGenerator:
+    def __init__(self, output_file: str = "llm_evaluation.md"):
+        self.output_file = output_file
 
-    # Extract message and variables
-    message = response_json.get("message", "LLM Evaluation Result")
-    results_list = response_json.get("variables", {}).get("results", [])
+    def generate_markdown_report(self, response_json: dict) -> str:
+        """
+        Generate a markdown file from the LLM evaluation JSON.
 
-    # Start markdown content
-    markdown_lines = []
-    markdown_lines.append(f"# {message}\n")
-    markdown_lines.append("---\n")
-    markdown_lines.append("## 📝 Input\n")
-    markdown_lines.append("```json")
-    markdown_lines.append(json.dumps(response_json, indent=2))
-    markdown_lines.append("```\n")
+        Parameters:
+            response_json (dict): The JSON response object.
 
-    # Parse the content in `results` if it's formatted Markdown-like already
-    if results_list:
-        markdown_lines.append("## 🧠 Evaluation of LLM Response\n")
-        markdown_lines.append(results_list[0])  # Assuming only one long string in the list
+        Returns:
+            str: The absolute path to the saved markdown file.
+        """
+        # Extract message and variables
+        message = response_json.get("message", "LLM Evaluation Report")
+        results_list = response_json.get("variables", {}).get("results", [])
 
-    # Write to file
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(markdown_lines))
+        # Start building markdown content
+        markdown_lines = [
+            f"# {message}\n",
+            "---\n",
+            "## 📝 Input\n",
+            "```json",
+            json.dumps(response_json, indent=2),
+            "```\n"
+        ]
 
-    return os.path.abspath(output_file)
+        if results_list:
+            markdown_lines.append("## 🧠 Evaluation of LLM Response\n")
+            markdown_lines.append(results_list[0])  # Assumes only one result entry
+
+        # Write markdown to file
+        with open(self.output_file, "w", encoding="utf-8") as md_file:
+            md_file.write("\n".join(markdown_lines))
+
+        return os.path.abspath(self.output_file)
+
+
+
+
+
+
+# Example input JSON
+response = {
+    "message": "LLM response completed",
+    "preview": {},
+    "variables": {
+        "results": [
+            "### 📘 Heading Section\n**Matched LLM Key**: review_summary.overview\n**Status**: Incomplete\n**Score**: 4/10\n**Comments**: Missing design ID and date.\n\n### 📊 Deviation Summary Table\n| Section | Deviation Type | Description |\n|--------|----------------|-------------|\n| Heading | Missing | Design info not available\n\n**Compliance**: ❌ Non-Compliant"
+        ]
+    },
+    "skill_collection": {
+        "data": {
+            "global_functions": ["1f63ab227_341c_45e3_9563_edba6b7b267b"]
+        }
+    }
+}
+
+# Use the class
+report_generator = MarkdownReportGenerator()
+markdown_path = report_generator.generate_markdown_report(response)
+print(f"✅ Markdown report generated at: {markdown_path}")
