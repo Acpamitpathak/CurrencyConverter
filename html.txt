@@ -1,46 +1,55 @@
-You are a professional document generator. Convert the provided architecture-review evaluation schema into a single self-contained HTML document suitable for delivery as a submission-ready review table. Follow these exact requirements:
+You are a professional HTML document generator.
 
-1. PAGE LAYOUT
-- Provide a meaningful <title> and top-level H1 heading: "Architecture Review — Evaluation Summary".
-- Add a short description paragraph under the heading explaining what the table shows.
+Create a single self-contained HTML file (no external assets) replicating the exact structure and attributes shown in the provided screenshot. The HTML should include:
 
-2. MAIN TABLE
-- Build one main HTML table representing the evaluation. The table must include:
-  - Columns: Section ID, Section Title, Status, Comment, Present (true/false), Has Question Field, Has Deviation Field, Has Explanation Field, Deviations (expandable list), Severity.
-  - For sections where some columns are not applicable (e.g., submission_cover does not have has_question_field), show "N/A".
-  - For "Deviations" column, render any deviations as a nested <ul> with each deviation showing: question, explanation, severity.
-  - Ensure header row is sticky when scrolling.
+1. PAGE HEADER
+- A top-level heading: "AI-Assisted Design Review Evaluation Report"
+- Subheading area with:
+  - Evaluated on: <date placeholder>
+  - Evaluator: <placeholder>
+  - Evaluation ID: <placeholder>
 
-3. ROWS TO INCLUDE
-- Create rows for these sections exactly (use these Section IDs): 
-  - submission_cover
-  - high_level_business_context
-  - data_flow_diagram
-  - architecture_diagram
-  - finops_assessment
-  - security_assessment
-  - bcp_assessment
-  - review_outcome (summary row)
-- For each assessment (finops, security, bcp) include the three boolean columns (has_question_field, has_deviation_field, has_explanation_field) and a sample deviation entry if any are missing.
+2. OVERALL RATING SECTION
+- A highlighted box or table row displaying:
+  - "Overall Rating: <score placeholder>"
+  - Below it, a brief summary sentence: "The system performs well across most dimensions, with minor improvements needed in [placeholder area]"
 
-4. SAMPLE DATA & EXPLANATIONS
-- Populate the table with realistic placeholder values matching the strict rules (e.g., mark a missing BCP as "Missing" and add a deviation with severity "High").
-- For any "Incomplete" or "Missing" status, add a brief comment text that explains exactly what's missing. Do not invent content beyond brief explanation labels.
+3. ATTRIBUTE RATINGS TABLE
+- A table with **three columns**:
+  - Attribute
+  - Rating (1-5)
+  - Review Notes
+- Attribute rows must exactly match the screenshot order:
+  1. Attribute Accuracy
+  2. Structural Compliance
+  3. Technology Stack Validation
+  4. Clarity of Findings
+  5. Relevance of Comments
+  6. Consistency of Review Sources
+  7. Accordance with Global Standards
+  8. Language and Tone Appropriateness
+- Each row should have:
+  - Attribute name in first column
+  - Numeric rating placeholder in second column
+  - Review notes placeholder in third column
 
-5. USABILITY & ACCESSIBILITY
-- Use inline CSS only (inside a <style> tag).
-- Make the table responsive: allow horizontal scroll on small screens.
-- Use semantic HTML (table, thead, tbody, caption).
-- Add proper aria attributes for accessibility (aria-label on table, role on buttons).
-- Add a visible legend or caption describing severity colors (High: red, Medium: orange, Low: yellow) — use accessible color contrast.
+4. SUGGESTED IMPROVEMENTS SECTION
+- A bullet list titled "Suggested Improvements" with placeholder improvement items (at least 4 items).
 
-6. EXTRA FEATURES (optional but desired)
-- Add two buttons above the table: "Export CSV" and "Export JSON" that export the current table content. Implement the export functions using plain JavaScript (no external libs). 
-- Add a small search/filter input that filters rows by Section Title or Status.
+5. STYLING
+- Use inline CSS (inside a <style> tag) for:
+  - Clear table borders
+  - Light row striping
+  - Bold headings
+  - Highlighted Overall Rating box
+- Table should be responsive, with header row sticky when scrolling.
+- Font: clean, sans-serif.
 
-7. CODE STANDARDS
-- Include compact, readable, commented HTML/CSS/JS.
-- No external assets or CDN links.
-- Output only the final HTML (complete file) — do not add extra commentary.
+6. ACCESSIBILITY
+- Add table caption "Evaluation Attribute Ratings"
+- Use aria-label attributes where relevant.
 
-Now produce the complete HTML file content that satisfies the above.
+7. PLACEHOLDERS
+- Populate all scores, notes, and text with clearly identifiable placeholders (e.g., "[Rating]", "[Review Notes]") so they can be programmatically replaced later.
+
+Output only the final HTML file content.
