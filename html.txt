@@ -54,4 +54,9 @@ HTML skeleton for output:
     <tr>
       <td>Summary Accuracy</td>
       <td>[Rating]</td>
-      <
+      <td>[Reason]</td>
+      <td>[Improvement]</td>
+    </tr>
+    <!-- Repeat for all attributes -->
+  </tbody>
+</table>
